@@ -6,7 +6,7 @@
 #include "thread.h"
 
 struct semaphore {
-	int count = 0;
+	int count;
 	struct queue* wthreads; // Threads waiting to be executed/blocked threads.
 };
 
@@ -14,6 +14,7 @@ sem_t sem_create(size_t count)
 {
 	struct semaphore* sem = (struct semaphore*) malloc(sizeof(struct semaphore));
 
+	sem->count = 0;
 	sem->count = count;
 	sem->wthreads = queue_create();
 	return sem; 
@@ -82,8 +83,9 @@ int sem_getvalue(sem_t sem, int *sval)
 	if(sem->count > 0)
 		*sval = sem->count;
 
-	if(sem>-count == 0)
-		*sval = -(queue_length(s->wthreads));
+	if(sem->count == 0)
+		*sval = -(queue_length(sem->wthreads));
 
 	return 0;
 }
+
