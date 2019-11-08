@@ -36,6 +36,57 @@ queue_t tps_queue = NULL;
  * Return: -1 if TPS API has already been initialized, or in case of failure
  * during the initialization. 0 if the TPS API was successfully initialized.
  */
+
+
+ static int find_tps(void* data, void* argv) {
+   pthread_t tid = *((pthread_t*)argv);
+   //return 1 if tps found
+   if(((tps*)data)->tid == tid) {
+     return 1;
+   }
+   else{
+     return 0;
+   }
+ }
+
+
+ static int find_address(void* data, void* argv)
+ {
+   void* addr = argv;
+   //return 1 if address found
+   if(((tps*)data)->tps_page->addr == addr) {
+     return 1;
+   }
+   return 0;
+ }
+
+
+ //function provided in prompt
+ static void segv_handler(int sig, siginfo_t *si, void *context)
+ {
+   tps* current_tps = NULL;
+   /*
+    * Get the address corresponding to the beginning of the page where the
+    * fault occurred
+    */
+   void *p_fault = (void*)((uintptr_t)si->si_addr & ~(TPS_SIZE - 1));
+
+   //Iterate through all the TPS areas and find if p_fault matches one of them
+   queue_iterate(tps_queue, find_address, p_fault, (void**)&current_tps);
+   //if there is a match
+   if (current_tps != NULL)
+   /* Printf the following error message */
+       fprintf(stderr, "TPS protection error!\n");
+
+   /* In any case, restore the default signal handlers */
+   signal(SIGSEGV, SIG_DFL);
+   signal(SIGBUS, SIG_DFL);
+   /* And transmit the signal again in order to cause the program to crash */
+   raise(sig);
+ }
+
+
+
 int tps_init(int segv)
 {
   //return -1 if TPS API has already been initiliazied
@@ -50,14 +101,17 @@ int tps_init(int segv)
 
   //if segv is different than 0
   if(segv != 0){
-    //TODO
+    struct sigaction sa;
     //the TPS API should install a
     // page fault handler that is able to recognize TPS
     // protection errors and
     // display the message "TPS protection error!\n" on stderr.
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = segv_handler; //use function segv_handler from prompt
+    sigaction(SIGBUS, &sa, NULL);
+    sigaction(SIGSEGV, &sa, NULL);
   }
-
-
   return 0;
 }
 
