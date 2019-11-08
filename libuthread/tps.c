@@ -57,7 +57,9 @@ queue_t tps_queue = NULL;
    if(((tps*)data)->tps_page->addr == addr) {
      return 1;
    }
-   return 0;
+   else{
+     return 0;     
+   }
  }
 
 
