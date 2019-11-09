@@ -164,7 +164,7 @@ int tps_create(void)
     //this is our created page
     //The page of memory associated to a TPS should be allocated using the C library function mmap().
     current_tps->tps_page = malloc(sizeof(page));
-    current_tps->tps_page->address = mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANON, 10, 0);
+    current_tps->tps_page->address = mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
 
     current_tps->tid = current_tid; //update tid
@@ -289,5 +289,6 @@ int tps_write(size_t offset, size_t length, char *buffer)
  */
 int tps_clone(pthread_t tid)
 {
+
 
 }
