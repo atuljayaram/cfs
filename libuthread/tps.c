@@ -24,20 +24,9 @@ typedef struct tps {
 
 queue_t tps_queue = NULL;
 
-/*
- * tps_init - Initialize TPS
- * @segv - Activate segfault handler
- *
- * Initialize TPS API. This function should only be called once by the client
- * application. If @segv is different than 0, the TPS API should install a
- * page fault handler that is able to recognize TPS protection errors and
- * display the message "TPS protection error!\n" on stderr.
- *
- * Return: -1 if TPS API has already been initialized, or in case of failure
- * during the initialization. 0 if the TPS API was successfully initialized.
- */
 
 
+ //helper function to find tps (called in segv_handler)
  static int find_tps(void* data, void* argv) {
    pthread_t tid = *((pthread_t*)argv);
    //return 1 if tps found
@@ -49,7 +38,7 @@ queue_t tps_queue = NULL;
    }
  }
 
-
+ //helper function to find address (called in segv_handler)
  static int find_address(void* data, void* argv)
  {
    void* addr = argv;
@@ -58,7 +47,7 @@ queue_t tps_queue = NULL;
      return 1;
    }
    else{
-     return 0;     
+     return 0;
    }
  }
 
@@ -88,6 +77,19 @@ queue_t tps_queue = NULL;
  }
 
 
+
+ /*
+  * tps_init - Initialize TPS
+  * @segv - Activate segfault handler
+  *
+  * Initialize TPS API. This function should only be called once by the client
+  * application. If @segv is different than 0, the TPS API should install a
+  * page fault handler that is able to recognize TPS protection errors and
+  * display the message "TPS protection error!\n" on stderr.
+  *
+  * Return: -1 if TPS API has already been initialized, or in case of failure
+  * during the initialization. 0 if the TPS API was successfully initialized.
+  */
 
 int tps_init(int segv)
 {
@@ -133,12 +135,50 @@ int tps_init(int segv)
  */
 int tps_create(void)
 {
+  pthread_t current_tid = pthread_self();
   tps* current_tps = NULL;
+
+  enter_critical_section(); //enter critical section (duh)
+  queue_iterate(tps_queue, find_tps, (void*)&current_tid, (void**)&current_tps); // find tps block
+  exit_critical_section(); //exit the critical section (double duh)
 
   //if current thread already has a TPS (tps already exists), return -1
   if(current_tps != NULL){
     return -1;
   }
+
+  struct tps * node = (struct tps *)malloc(sizeof(struct tps));
+
+  if(!node){
+    return -1;
+  }
+
+  if(node){
+    //this is the tps block
+    current_tps = malloc(sizeof(tps));
+
+    //this is our created page
+    current_tps->tps_page = malloc(sizeof(page));
+
+    if(!current_tps){
+      return -1;
+    }
+
+    //still our created page
+    current_tps->tps_page->address = mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANON, 10, 0);
+
+
+    current_tps->tid = current_tid; //update tid
+    current_tps->tps_page->ref_counter = 1; //reference counter to 1
+
+    enter_critical_section(); //enter critical section (duh)
+    queue_enqueue(tps_queue, (void*)current_tps); //add to queue
+    exit_critical_section(); //exit the critical section (double duh)
+
+    return 0;
+  }
+
+
 
   //TODO
   //Create a TPS area an associate it to the current thread
