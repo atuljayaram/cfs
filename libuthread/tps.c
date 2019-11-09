@@ -135,7 +135,7 @@ int tps_init(int segv)
 int tps_create(void)
 {
   pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
-  tps* current_tps = NULL;
+  struct tps* current_tps = NULL;
 
   enter_critical_section(); //enter critical section (duh)
   queue_iterate(tps_queue, find_tps, (void*)&current_tid, (void**)&current_tps); // find tps block
@@ -193,7 +193,7 @@ int tps_destroy(void)
   int destroy_success;
 
   pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
-  tps* current_tps = NULL;
+  struct tps* current_tps = NULL;
 
   enter_critical_section(); //enter critical section (duh)
   queue_iterate(tps_queue, find_tps, (void*)&current_tid, (void**)&current_tps); // find tps block
@@ -234,11 +234,18 @@ int tps_destroy(void)
  */
 int tps_read(size_t offset, size_t length, char *buffer)
 {
+
   int set_read_on,set_read_off; // Flags for success of turning read protections on or off + memcpy
   
   if (length > TPS_SIZE) // Can't read more than what is in page
   {
     return -1
+  }
+  struct tps* current_tps = NULL;
+
+  //if current thread doesn't have a TPS, return -1
+  if(current_tps == NULL){
+    return -1;
   }
   
   pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
@@ -284,6 +291,7 @@ int tps_read(size_t offset, size_t length, char *buffer)
  */
 int tps_write(size_t offset, size_t length, char *buffer)
 {
+
   return 0;
 }
 
@@ -303,5 +311,33 @@ int tps_write(size_t offset, size_t length, char *buffer)
  */
 int tps_clone(pthread_t tid)
 {
+  struct tps* current_tps = NULL;
+  struct tps* clone_tps = NULL;
+  pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
+
+  enter_critical_section(); //enter critical section (duh)
+  queue_iterate(tps_queue, find_tps, (void*)&tid, (void**)&clone_tps);
+  exit_critical_section(); //exit the critical section (double duh)
+
+  enter_critical_section(); //enter critical section (duh)
+  queue_iterate(tps_queue, find_tps, (void*)&current_tid, (void**)&current_tps);
+  exit_critical_section(); //exit the critical section (double duh)
+
+
+  //return -1 if thread @tid doesn't have a tps
+  //return -1 if current thread already has a a TPS
+  if(clone_tps != NULL || current_tps == NULL){
+    return -1;
+  }
+
+
+  enter_critical_section(); //enter critical section (duh)
+
+  current_tps->tps_page = clone_tps->tps_page;
+  current_tps->tps_page->ref_counter = current_tps->tps_page->ref_counter + 1; //update reference count
+
+  queue_enqueue(tps_queue, (void*)current_tps);
+  exit_critical_section(); //exit the critical section (double duh)
+
   return 0;
 }
