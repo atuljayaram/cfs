@@ -13,17 +13,16 @@
 #include "tps.h"
 
 typedef struct page {
-  void* address;
-  int ref_counter;
+  void* address; //address in memory where we have our TPS
+  int ref_counter; //num of TPS structs that points to page
 } page;
 
 typedef struct tps {
-  page* tps_page;
-  pthread_t TID;
+  page* tps_page; //page the TPS is pointing to
+  pthread_t TID; //this is the TID of the thread using TPS
 } tps;
 
 queue_t tps_queue = NULL;
-
 
 
  //helper function to find tps (called in segv_handler)
@@ -190,15 +189,29 @@ int tps_create(void)
  */
 int tps_destroy(void)
 {
+
+  int destroy_success;
+
+  pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
   tps* current_tps = NULL;
+
+  enter_critical_section(); //enter critical section (duh)
+  queue_iterate(tps_queue, find_tps, (void*)&current_tid, (void**)&current_tps); // find tps block
+  exit_critical_section(); //exit the critical section (double duh)
 
   //if current thread doesn't have a TPS, return -1
   if(current_tps == NULL){
     return -1;
   }
 
-  //TODO
-  //Destroy the TPS area associated to the current thread
+  enter_critical_section(); //enter critical section (duh)
+  destroy_success = munmap(current_tps->tps_page->address,TPS_SIZE); //here. we use munmap to destroy the TPS
+  exit_critical_section(); //exit the critical section (double duh)
+
+  //if error with destroying TPS
+  if(destroy_success == -1){
+    return -1; //return -1
+  }
 
   return 0;
 }
