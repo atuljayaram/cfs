@@ -234,31 +234,39 @@ int tps_destroy(void)
  */
 int tps_read(size_t offset, size_t length, char *buffer)
 {
-  struct tps* current_tps = NULL;
 
+  int set_read_on,set_read_off; // Flags for success of turning read protections on or off + memcpy
+  
+  if (length > TPS_SIZE) // Can't read more than what is in page
+  {
+    return -1
+  }
+  struct tps* current_tps = NULL;
 
   //if current thread doesn't have a TPS, return -1
   if(current_tps == NULL){
     return -1;
   }
+  
+  pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
+  tps* current_tps = NULL;
 
-
-  //if the reading operation is out of bound, return -1
-  if(offset + length > TPS_SIZE){
+  enter_critical_section(); //enter critical section (duh)
+  queue_iterate(tps_queue, find_tps, (void*)&current_tid, (void**)&current_tps); // find tps block
+  exit_critical_section(); //exit the critical section (double duh)
+  
+  if(current_tps == NULL)
     return -1;
-  }
-
-  //if @buffer is NULL
-  if(buffer == NULL){
+  
+  set_read_on = mprotect(current_tps->tps_page->address,length,PROT_READ); // Allow region of memory to be read from
+  memcpy(buffer,current_tps->tps_page->address+offset,length); // Copy contents of memory from page to provided buffer
+  set_read_off = mprotect(current_tps->tps_page->address,length,PROT_NONE); // Remove read permissions from page memory
+  
+  if(set_read_on == -1 || set_read_off == -1) // If either permission sets fail...
     return -1;
-  }
-
-  //TODO
-  //Read @length bytes of data from the current thread's TPS at byte offset
-  //@offset into data buffer @buffer.
-
-
+  
   return 0;
+  
 }
 
 
