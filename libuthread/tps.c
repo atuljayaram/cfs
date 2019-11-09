@@ -30,7 +30,7 @@ queue_t tps_queue = NULL;
  static int find_tps(void* data, void* argv) {
    pthread_t tid = *((pthread_t*)argv);
    //return 1 if tps found
-   if(((tps*)data)->tid == tid) {
+   if(((tps*)data)->TID == tid) {
      return 1;
    }
    else{
@@ -41,9 +41,9 @@ queue_t tps_queue = NULL;
  //helper function to find address (called in segv_handler)
  static int find_address(void* data, void* argv)
  {
-   void* addr = argv;
+   void* address = argv;
    //return 1 if address found
-   if(((tps*)data)->tps_page->addr == addr) {
+   if(((tps*)data)->tps_page->address == address) {
      return 1;
    }
    else{
@@ -98,8 +98,8 @@ int tps_init(int segv)
     return -1;
   }
 
-  tps_queue_create = queue_create();
-  if(tps_queue_create == NULL){
+  tps_queue = queue_create();
+  if(tps_queue == NULL){
     return -1;
   }
 
@@ -167,7 +167,7 @@ int tps_create(void)
     current_tps->tps_page->address = mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
 
-    current_tps->tid = current_tid; //update tid
+    current_tps->TID = current_tid; //update tid
     current_tps->tps_page->ref_counter = 1; //reference counter to 1
 
     enter_critical_section(); //enter critical section (duh)
@@ -270,7 +270,7 @@ int tps_read(size_t offset, size_t length, char *buffer)
  */
 int tps_write(size_t offset, size_t length, char *buffer)
 {
-
+  return 0;
 }
 
 
@@ -289,6 +289,5 @@ int tps_write(size_t offset, size_t length, char *buffer)
  */
 int tps_clone(pthread_t tid)
 {
-
-
+  return 0;
 }
