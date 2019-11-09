@@ -288,6 +288,37 @@ int tps_read(size_t offset, size_t length, char *buffer)
  */
 int tps_write(size_t offset, size_t length, char *buffer)
 {
+  int set_write_on,set_write_off; // Flags for success of turning write protections on or off + memcpy
+
+  if (length > TPS_SIZE) // Can't read more than what is in page
+  {
+    return -1;
+  }
+
+  pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
+  tps* current_tps = NULL;
+  
+  page * other_page;
+
+  enter_critical_section(); //enter critical section (duh)
+  queue_iterate(tps_queue, find_tps, (void*)&current_tid, (void**)&current_tps); // find tps block
+  exit_critical_section(); //exit the critical section (double duh)
+
+
+  //if current thread doesn't have a TPS, return -1
+  if(current_tps == NULL)
+    return -1;
+  
+  if(current_tps->tps_page->ref_counter > 1)
+  {
+   ; 
+  }
+  set_write_on = mprotect(current_tps->tps_page->address,length,PROT_WRITE); // Allow region of memory to be written to
+  memcpy(current_tps->tps_page->address+offset,buffer,length); // Write to memory page from buffer
+  set_write_off = mprotect(current_tps->tps_page->address,length,PROT_NONE); // Remove write permissions from page memory
+
+  if(set_write_on == -1 || set_write_off == -1) // If either permission sets fail...
+    return -1;
 
   return 0;
 }
