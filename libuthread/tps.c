@@ -135,7 +135,7 @@ int tps_init(int segv)
  */
 int tps_create(void)
 {
-  pthread_t current_tid = pthread_self();
+  pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
   tps* current_tps = NULL;
 
   enter_critical_section(); //enter critical section (duh)
@@ -157,14 +157,13 @@ int tps_create(void)
     //this is the tps block
     current_tps = malloc(sizeof(tps));
 
-    //this is our created page
-    current_tps->tps_page = malloc(sizeof(page));
-
     if(!current_tps){
       return -1;
     }
 
-    //still our created page
+    //this is our created page
+    //The page of memory associated to a TPS should be allocated using the C library function mmap().
+    current_tps->tps_page = malloc(sizeof(page));
     current_tps->tps_page->address = mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANON, 10, 0);
 
 
@@ -174,15 +173,7 @@ int tps_create(void)
     enter_critical_section(); //enter critical section (duh)
     queue_enqueue(tps_queue, (void*)current_tps); //add to queue
     exit_critical_section(); //exit the critical section (double duh)
-
-    return 0;
   }
-
-
-
-  //TODO
-  //Create a TPS area an associate it to the current thread
-
 
   return 0;
 }
