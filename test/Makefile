@@ -3,7 +3,8 @@ programs := \
 	sem_count.x \
 	sem_buffer.x \
 	sem_prime.x \
-	tps.x\
+	tps.x \
+	our_tps_testing.x
 
 # User-level thread library
 UTHREADLIB := libuthread
