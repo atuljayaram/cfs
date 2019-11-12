@@ -16,13 +16,13 @@ sem_t sem_create(size_t count)
 
 	sem->count = 0;
 	sem->count = count;
-	sem->wthreads = queue_create();
+	sem->wthreads = queue_create(); // Create a queue for this semaphore
 	return sem; 
 }
 
 int sem_destroy(sem_t sem)
 {
-	if(sem == NULL || queue_length(sem->wthreads) != 0)
+	if(sem == NULL || queue_length(sem->wthreads) != 0) // If sem doesn't exist or the queue is empty
 		return -1;
 
 	free(sem);
@@ -40,7 +40,7 @@ int sem_down(sem_t sem)
 	while(sem->count == 0)
 	{
 		queue_enqueue(sem->wthreads,(void*)pthread_self());
-		thread_block();
+		thread_block(); // Prevent threads from executing
 	}
 
 	if(sem->count > 0)
