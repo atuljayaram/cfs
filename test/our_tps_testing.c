@@ -52,9 +52,6 @@ void *thread3(void* arg){
 
 void *thread2(void* arg){
 
-  assert(tps_init(1) == 0); //this tests a first call of tps_init
-  assert(tps_init(0) == -1); //this tests a second call of tps_init (should fail and return -1)
-
   assert(tps_create() == 0); //this tests a first call of tps_create
   assert(tps_create() == -1); //this tests a second call of tps_create (should fail and return -1)
 
@@ -66,26 +63,7 @@ void *thread2(void* arg){
   return 0;
 }
 
-void *thread1(void* arg){
-  char test_string[256] = {0};
 
-  assert(tps_init(1) == 0);
-  assert(tps_create() == 0);
-  assert(tps_destroy() == 0);
-
-  assert(tps_create() == 0);
-
-  assert(tps_write(0, 256, test_string) == 0);
-  test_string[0] = 1;
-  assert(tps_write(1, 256, test_string) == 0);
-  assert(tps_read(0, 256, test_string) == 0);
-  assert(test_string[0] == 0);
-  assert(test_string[1] == 1);
-
-  fprintf(stderr, "Done testing functions being valid!\n");
-
-  return 0;
-}
 
 
 void *thread_testing_called_twice(){
@@ -128,23 +106,15 @@ void *thread_testing_clone(){
 
 
 
-void *thread_testing_valid(){
-  pthread_t tid;
-
-  //testing functions being used correctly
-  pthread_create(&tid, NULL, thread1, NULL);
-  pthread_join(tid, NULL);
-
-  return 0;
-}
-
-
 int main(int argc, char **argv){
+  thread_testing_before_calling_init();
+
+  assert(tps_init(1) == 0); //this tests a first call of tps_init
+  assert(tps_init(0) == -1); //this tests a second call of tps_init (should fail and return -1)
 
   thread_testing_called_twice();
-  thread_testing_before_calling_init();
+
   thread_testing_clone();
-  thread_testing_valid();
 
   return 0;
 }
