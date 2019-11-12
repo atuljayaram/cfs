@@ -330,7 +330,7 @@ int tps_write(size_t offset, size_t length, char *buffer)
     return -1;
   }
 
-  int set_write_on,set_write_off,turn_read_on,turn_read_off; // Flags for success of turning read/write protections on or off + memcpy
+  int set_write_on,set_write_off,turn_read_on,turn_read_off; // Flags for success of turning read/write protections on or off
 
   if (length > TPS_SIZE) // Can't read more than what is in page
   {
