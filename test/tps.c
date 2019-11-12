@@ -13,7 +13,7 @@ static char msg2[TPS_SIZE] = "hello world!\n";
 
 static sem_t sem1, sem2;
 
-void thread2(void arg)
+void *thread2(void* arg)
 {
         char *buffer = malloc(TPS_SIZE);
 
@@ -47,7 +47,7 @@ void thread2(void arg)
         return NULL;
 }
 
-void thread1(void arg)
+void *thread1(void* arg)
 {
         pthread_t tid;
         char *buffer = malloc(TPS_SIZE);

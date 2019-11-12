@@ -12,13 +12,14 @@ static sem_t sem1;
 static sem_t sem2;
 
 
-void *thread5(void arg){
+void *thread5(void* arg){
   tps_create();
   sem_up(sem1);
   sem_down(sem2);
+  return 0;
 }
 
-void *thread4(void arg){
+void *thread4(void* arg){
   pthread_t tid;
 
   pthread_create(&tid, NULL, thread5, NULL);
@@ -31,10 +32,11 @@ void *thread4(void arg){
   sem_up(sem2);
 
   fprintf(stdout, "Done testing tps_clone function!\n");
+  return 0;
 }
 
 
-void *thread3(void arg){
+void *thread3(void* arg){
   char test_string[256] = {0};
 
   assert(tps_create() == -1); //this tests calling tps_create before calling tps_init
@@ -44,10 +46,11 @@ void *thread3(void arg){
 
   fprintf(stdout, "Done testing functions being called before tps_init!\n");
 
+  return 0;
 }
 
 
-void *thread2(void arg){
+void *thread2(void* arg){
 
   assert(tps_init(1) == 0); //this tests a first call of tps_init
   assert(tps_init(0) == -1); //this tests a second call of tps_init (should fail and return -1)
@@ -59,9 +62,11 @@ void *thread2(void arg){
   assert(tps_destroy() == -1); // this tests a second call of tps_destroy (should fail and return -1)
 
   fprintf(stdout, "Done testing functions being called twice!\n");
+
+  return 0;
 }
 
-void *thread1(void arg){
+void *thread1(void* arg){
   char test_string[256] = {0};
 
   assert(tps_init(1) == 0);
@@ -78,28 +83,34 @@ void *thread1(void arg){
   assert(test_string[1] == 1);
 
   fprintf(stderr, "Done testing functions being valid!\n");
+
+  return 0;
 }
 
 
-void *thread_testing_called_twice(void arg){
+void *thread_testing_called_twice(){
   pthread_t tid;
 
   //testing functions being called twice
   pthread_create(&tid, NULL, thread2, NULL);
   pthread_join(tid, NULL);
+
+  return 0;
 }
 
 
-void *thread_testing_before_calling_init(void arg){
+void *thread_testing_before_calling_init(){
   pthread_t tid;
 
   //testing functions being called before tps_init
   pthread_create(&tid, NULL, thread3, NULL);
   pthread_join(tid, NULL);
+
+  return 0;
 }
 
 
-void *thread_testing_clone(void arg){
+void *thread_testing_clone(){
   pthread_t tid;
 
   sem1 = sem_create(0);
@@ -111,20 +122,24 @@ void *thread_testing_clone(void arg){
 
   sem_destroy(sem1);
   sem_destroy(sem2);
+
+  return 0;
 }
 
 
 
-void *thread_testing_valid(void arg){
+void *thread_testing_valid(){
   pthread_t tid;
 
   //testing functions being used correctly
   pthread_create(&tid, NULL, thread1, NULL);
   pthread_join(tid, NULL);
+
+  return 0;
 }
 
 
-int main(int argc, char argv**){
+int main(int argc, char **argv){
 
   thread_testing_called_twice();
   thread_testing_before_calling_init();
