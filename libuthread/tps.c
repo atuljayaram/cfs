@@ -326,9 +326,9 @@ int tps_write(size_t offset, size_t length, char *buffer)
         if (!p)
             return -1;
 
-        current_tps-> = p;
-        curTPS->tps_page->address = (char *) mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE|MAP_ANON, -1, 0);
-        curTPS->tps_page->ref_counter += 1;
+        current_tps->tps_page = p;
+        current_tps->tps_page->address = (char *) mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE|MAP_ANON, -1, 0);
+        current_tps->tps_page->ref_counter += 1;
 
         turn_read_on = mprotect(other_page,length,PROT_READ);
         set_write_on = mprotect(current_tps->tps_page->address,length,PROT_WRITE);
