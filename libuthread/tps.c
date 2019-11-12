@@ -366,36 +366,40 @@ int tps_write(size_t offset, size_t length, char *buffer)
 int tps_clone(pthread_t tid)
 {
   struct tps* current_tps = NULL;
-  struct tps* clone_tps = NULL;
-  pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
+  struct tps* clone_me_tps = NULL; //clone this one
+  pthread_t current_tid = pthread_self();  //identify client threaeds by getting their Thread ID with pthread_self()
 
   enter_critical_section(); //enter critical section (duh)
-  queue_iterate(tps_queue, find_tps, (void*)&tid, (void**)&clone_tps);
-  exit_critical_section(); //exit the critical section (double duh)
 
-  enter_critical_section(); //enter critical section (duh)
+  queue_iterate(tps_queue, find_tps, (void*)&tid, (void**)&clone_me_tps);
   queue_iterate(tps_queue, find_tps, (void*)&current_tid, (void**)&current_tps);
-  exit_critical_section(); //exit the critical section (double duh)
 
-
-  //return -1 if thread @tid doesn't have a tps
-  //return -1 if current thread already has a a TPS
-  if(clone_tps != NULL || current_tps == NULL){
+  //thread doesn't have a TPS
+  //current thread already has a TPS
+  if(clone_me_tps == NULL || current_tps != NULL){
+    exit_critical_section(); //exit critical section (duh)
     return -1;
   }
 
   struct tps * newNode = (struct tps*)malloc(sizeof(struct tps));
 
-  if(newNode)
-  {
-      enter_critical_section(); //enter critical section (duh)
-      newNode->TID = current_tid;
-      newNode->tps_page = clone_tps->tps_page;
-      newNode->tps_page->ref_counter++; //update reference count
+  //not failure
+  if(newNode){
+    current_tps = malloc(sizeof(tps));
 
-      queue_enqueue(tps_queue, (void*)current_tps);
-      exit_critical_section(); //exit the critical section (double duh)
+    current_tps->tps_page = clone_me_tps->tps_page;
+    (current_tps->tps_page->ref_counter)++; //update reference counter
 
+    current_tps->TID = current_tid;
+
+    queue_enqueue(tps_queue, (void*)current_tps);
+
+    exit_critical_section(); //exit critical section (duh)
+  }
+  //failure!
+  else if(!newNode){
+    exit_critical_section(); //exit critical section (duh)
+    return -1;
   }
   return 0;
 }
