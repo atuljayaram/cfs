@@ -163,8 +163,14 @@ int tps_create(void)
     //this is our created page
     //The page of memory associated to a TPS should be allocated using the C library function mmap().
     current_tps->tps_page = malloc(sizeof(page));
+    if(!current_tps){
+      return -1;
+    }
     current_tps->tps_page->address = mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
+    if(current_tps->tps_page->address == MAP_FAILED){
+      return -1;
+    }
 
     current_tps->TID = current_tid; //update tid
     current_tps->tps_page->ref_counter = 1; //reference counter to 1
@@ -252,18 +258,20 @@ int tps_read(size_t offset, size_t length, char *buffer)
 
 
   //if current thread doesn't have a TPS, return -1
-  if(current_tps == NULL)
+  if(current_tps == NULL){
     return -1;
+  }
 
   set_read_on = mprotect(current_tps->tps_page->address,length,PROT_READ); // Allow region of memory to be read from
   memcpy(buffer,current_tps->tps_page->address+offset,length); // Copy contents of memory from page to provided buffer
   set_read_off = mprotect(current_tps->tps_page->address,length,PROT_NONE); // Remove read permissions from page memory
 
-  if(set_read_on == -1 || set_read_off == -1) // If either permission sets fail...
+  if(set_read_on == -1 || set_read_off == -1){
+    // If either permission sets fail...
     return -1;
+  }
 
   return 0;
-
 }
 
 
@@ -297,7 +305,7 @@ int tps_write(size_t offset, size_t length, char *buffer)
 
   pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
   tps* current_tps = NULL;
-  
+
   page * other_page;
 
   enter_critical_section(); //enter critical section (duh)
@@ -308,7 +316,7 @@ int tps_write(size_t offset, size_t length, char *buffer)
   //if current thread doesn't have a TPS, return -1
   if(current_tps == NULL)
     return -1;
-  
+
   if(current_tps->tps_page->ref_counter > 1)
   {
         current_tps->tps_page->ref_counter--;
@@ -377,7 +385,7 @@ int tps_clone(pthread_t tid)
   }
 
   struct tps * newNode = (struct tps*)malloc(sizeof(struct tps));
-  
+
   if(newNode)
   {
       enter_critical_section(); //enter critical section (duh)
@@ -386,8 +394,8 @@ int tps_clone(pthread_t tid)
       newNode->tps_page->ref_counter++; //update reference count
 
       queue_enqueue(tps_queue, (void*)current_tps);
-      exit_critical_section(); //exit the critical section (double duh) 
-    
+      exit_critical_section(); //exit the critical section (double duh)
+
   }
   return 0;
 }
