@@ -288,7 +288,7 @@ int tps_read(size_t offset, size_t length, char *buffer)
  */
 int tps_write(size_t offset, size_t length, char *buffer)
 {
-  int set_write_on,set_write_off; // Flags for success of turning write protections on or off + memcpy
+  int set_write_on,set_write_off,turn_read_on,turn_read_off; // Flags for success of turning read/write protections on or off + memcpy
 
   if (length > TPS_SIZE) // Can't read more than what is in page
   {
@@ -311,7 +311,25 @@ int tps_write(size_t offset, size_t length, char *buffer)
   
   if(current_tps->tps_page->ref_counter > 1)
   {
-   ; 
+        current_tps->tps_page->ref_counter--;
+        other_page = current_tps->tps_page->address;
+        struct page * p = (struct page *)malloc(sizeof(struct page));
+
+        if (!p)
+            return -1;
+
+        current_tps-> = p;
+        curTPS->tps_page->address = (char *) mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE|MAP_ANON, -1, 0);
+        curTPS->tps_page->ref_counter += 1;
+
+        turn_read_on = mprotect(other_page,length,PROT_READ);
+        set_write_on = mprotect(current_tps->tps_page->address,length,PROT_WRITE);
+        memcpy(current_tps->tps_page->address,other_page,TPS_SIZE);
+        turn_read_off = mprotect(other_page,length,PROT_NONE);
+        set_write_off = mprotect(current_tps->tps_page->address,length,PROT_NONE);
+
+        if ( turn_read_on==-1 || set_write_on==-1 || turn_read_off==-1 || set_write_off==-1)
+            return -1;
   }
   set_write_on = mprotect(current_tps->tps_page->address,length,PROT_WRITE); // Allow region of memory to be written to
   memcpy(current_tps->tps_page->address+offset,buffer,length); // Write to memory page from buffer
@@ -358,14 +376,18 @@ int tps_clone(pthread_t tid)
     return -1;
   }
 
+  struct tps * newNode = (struct tps*)malloc(sizeof(struct tps));
+  
+  if(newNode)
+  {
+      enter_critical_section(); //enter critical section (duh)
+      newNode->TID = current_tid;
+      newNode->tps_page = clone_tps->tps_page;
+      newNode->tps_page->ref_counter++; //update reference count
 
-  enter_critical_section(); //enter critical section (duh)
-
-  current_tps->tps_page = clone_tps->tps_page;
-  current_tps->tps_page->ref_counter = current_tps->tps_page->ref_counter + 1; //update reference count
-
-  queue_enqueue(tps_queue, (void*)current_tps);
-  exit_critical_section(); //exit the critical section (double duh)
-
+      queue_enqueue(tps_queue, (void*)current_tps);
+      exit_critical_section(); //exit the critical section (double duh) 
+    
+  }
   return 0;
 }
