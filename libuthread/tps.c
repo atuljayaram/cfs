@@ -24,6 +24,8 @@ typedef struct tps {
 
 queue_t tps_queue = NULL;
 
+int thread_init = 0;
+
 
  //helper function to find tps (called in segv_handler)
  static int find_tps(void* data, void* argv){
@@ -92,6 +94,9 @@ queue_t tps_queue = NULL;
 
 int tps_init(int segv)
 {
+
+  thread_init = 1;
+
   //return -1 if TPS API has already been initiliazied
   if(tps_queue != NULL){
     return -1;
@@ -101,6 +106,7 @@ int tps_init(int segv)
   if(tps_queue == NULL){
     return -1;
   }
+
 
   //if segv is different than 0
   if(segv != 0){
@@ -134,6 +140,9 @@ int tps_init(int segv)
  */
 int tps_create(void)
 {
+  if(thread_init == 0){
+    return -1;
+  }
   pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
   struct tps* current_tps = NULL;
 
@@ -145,6 +154,7 @@ int tps_create(void)
   if(current_tps != NULL){
     return -1;
   }
+
 
   struct tps * node = (struct tps *)malloc(sizeof(struct tps));
 
@@ -195,10 +205,13 @@ int tps_create(void)
  */
 int tps_destroy(void)
 {
+  if(thread_init == 0){
+    return -1;
+  }
 
   int destroy_success;
 
-  pthread_t current_tid = pthread_self(); //identify client threaeds by getting their Thread ID with pthread_self()
+  pthread_t current_tid = pthread_self(); //identify client threads by getting their Thread ID with pthread_self()
   struct tps* current_tps = NULL;
 
   enter_critical_section(); //enter critical section (duh)
@@ -210,9 +223,22 @@ int tps_destroy(void)
     return -1;
   }
 
-  enter_critical_section(); //enter critical section (duh)
-  destroy_success = munmap(current_tps->tps_page->address,TPS_SIZE); //here. we use munmap to destroy the TPS
-  exit_critical_section(); //exit the critical section (double duh)
+
+  enter_critical_section();
+  queue_delete(tps_queue, (void*)current_tps);
+  exit_critical_section();
+
+  if(current_tps->tps_page->ref_counter > 1){
+    (current_tps->tps_page->ref_counter)--;
+  }
+  else if(current_tps->tps_page->ref_counter == 1){
+    enter_critical_section(); //enter critical section (duh)
+    destroy_success = munmap(current_tps->tps_page->address,TPS_SIZE); //here. we use munmap to destroy the TPS
+    exit_critical_section(); //exit the critical section (double duh)
+
+    free(current_tps->tps_page);
+  }
+  free(current_tps);
 
   //if error with destroying TPS
   if(destroy_success == -1){
@@ -240,6 +266,10 @@ int tps_destroy(void)
  */
 int tps_read(size_t offset, size_t length, char *buffer)
 {
+
+  if(thread_init == 0){
+    return -1;
+  }
 
   int set_read_on,set_read_off; // Flags for success of turning read protections on or off + memcpy
 
@@ -296,6 +326,10 @@ int tps_read(size_t offset, size_t length, char *buffer)
  */
 int tps_write(size_t offset, size_t length, char *buffer)
 {
+  if(thread_init == 0){
+    return -1;
+  }
+
   int set_write_on,set_write_off,turn_read_on,turn_read_off; // Flags for success of turning read/write protections on or off + memcpy
 
   if (length > TPS_SIZE) // Can't read more than what is in page
@@ -365,6 +399,9 @@ int tps_write(size_t offset, size_t length, char *buffer)
  */
 int tps_clone(pthread_t tid)
 {
+  if(thread_init == 0){
+    return -1;
+  }
   struct tps* current_tps = NULL;
   struct tps* clone_me_tps = NULL; //clone this one
   pthread_t current_tid = pthread_self();  //identify client threaeds by getting their Thread ID with pthread_self()
