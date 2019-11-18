@@ -52,9 +52,9 @@ struct fd_table{
 };
 
 struct fd* our_fd_table;
+fd_t currently_open[FS_OPEN_MAX_COUNT];
 
-//struct fd_node* return_fd(int fd); FOR DEBUGGING, MAYBE?
-//struct entries* return_entry(const char* filename); FOR DEBUGGING, MAYBE?
+/* TODO: Phase 1 */
 
 int fs_mount(const char *diskname)
 {
@@ -71,20 +71,162 @@ int fs_info(void)
 	/* TODO: Phase 1 */
 }
 
+
+
+
+
+
+
+
+
+//done?
+/**
+ * fs_create - Create a new file
+ * @filename: File name
+ *
+ * Create a new and empty file named @filename in the root directory of the
+ * mounted file system. String @filename must be NULL-terminated and its total
+ * length cannot exceed %FS_FILENAME_LEN characters (including the NULL
+ * character).
+ *
+ * Return: -1 if @filename is invalid, if a file named @filename already exists,
+ * or if string @filename is too long, or if the root directory already contains
+ * %FS_FILE_MAX_COUNT files. 0 otherwise.
+ */
 int fs_create(const char *filename)
 {
-	/* TODO: Phase 2 */
+
+  int i = 0;
+  int count = 0;
+  int valid = 1;
+
+
+  /* TODO: Phase 2 */
+
+
+  //checks for validity of filename
+  for(i = 0; i < FS_FILENAME_LEN; i++){
+    if(filename[i] == '\0'){
+      valid = 1;
+      break;
+    }
+  }
+  if(valid != 1){
+    return -1;
+  }
+
+  //checks if the file named @filename already exists
+  for(i = 0; i < FS_FILE_MAX_COUNT; i++){
+    if(strlen(root[i].filename, filename) != 0){
+      if(strcmp(root[i].filename, filename) == 0){
+        return -1;
+      }
+      else{
+        count = count + 1;
+      }
+    }
+
+    //string of filename is too long
+    if((strlen(filename)) >= FS_FILENAME_LEN){
+      return -1;
+    }
+
+    //check if root directory already contains FS_FILE_MAX_COUNT file_size
+    if(count == FS_FILE_MAX_COUNT){
+      return -1;
+    }
+  }
+
+  //create new file
+  for(i = 0; i < FS_FILE_MAX_COUNT; i++){
+    if(root[i].filename[0] == '\0'){
+      strcpy(root[i].filename, filename);
+      root[i].first_index = 0xFFFF;
+      root[i].file_size = 0;
+      block_write(super.root_index, &root);
+    }
+  }
+  return 0;
 }
 
+
+
+/**
+ * fs_delete - Delete a file
+ * @filename: File name
+ *
+ * Delete the file named @filename from the root directory of the mounted file
+ * system.
+ *
+ * Return: -1 if @filename is invalid, if there is no file named @filename to
+ * delete, or if file @filename is currently open. 0 otherwise.
+ */
 int fs_delete(const char *filename)
 {
 	/* TODO: Phase 2 */
+  int i = 0;
+  int check_if_file_exists = 1;
+
+  //checks for validity of filename
+  for(i = 0; i < FS_FILENAME_LEN; i++){
+    if(filename[i] == '\0'){
+      int valid = 1;
+      break;
+    }
+  }
+  if(valid != 1){
+    return -1;
+  }
+  //checks if there is no file named @filename to delete
+  for(i = 0; i < FS_FILE_MAX_COUNT; i++){
+    if(strcmp(root[i].filename, filename) == 0){
+      check_if_file_exists = 1;
+    }
+  }
+  if(check_if_file_exists != 1){
+    return -1
+  }
+
+  //check if file @filename is currently open
+  for(i = 0; i < FS_OPEN_MAX_COUNT; i++){
+    if(strcmp(currently_open[i].filename, filename) == 0){
+      if(currently_open[i].fd != -1){
+        return -1;
+      }
+    }
+  }
 }
 
+
+
+
+/**
+ * fs_ls - List files on file system
+ *
+ * List information about the files located in the root directory.
+ *
+ * Return: -1 if no underlying virtual disk was opened. 0 otherwise.
+ */
 int fs_ls(void)
 {
 	/* TODO: Phase 2 */
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 int fs_open(const char *filename)
 {
@@ -115,4 +257,3 @@ int fs_read(int fd, void *buf, size_t count)
 {
 	/* TODO: Phase 4 */
 }
-
