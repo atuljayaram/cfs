@@ -14,7 +14,7 @@ struct superblock{
 	uint16_t total_amount;
 	uint16_t root_index;
 	uint16_t data_index;
-	uint16_t num_blocks;
+	uint16_t num_data_blocks;
 	uint8_t num_FAT;
 	uint8_t padding[4079];
 }__attribute__((packed));
@@ -70,7 +70,7 @@ int fs_mount(const char *diskname)
 
   if(super.total_amount!=block_disk_count())
     return -1;
-  if(super.num_blocks!=super.total_amount -2-super.num_FAT)
+  if(super.num_data_blocks!=super.total_amount -2-super.num_FAT)
     return -1;
   if(super.root_index!=super.num_FAT+1)
     return -1;
@@ -78,14 +78,14 @@ int fs_mount(const char *diskname)
     return -1;
 
 
-  ourFAT.arr = (uint16_t *)malloc(BLOCK_SIZE*super.num_FAT*sizeof(uint16_t));
+  our_fat.arr = (uint16_t *)malloc(BLOCK_SIZE*super.num_FAT*sizeof(uint16_t));
   void * temp = (void *) malloc(BLOCK_SIZE);
   for(i=1; i < super.root_index;i++)
   {
     block_read(i,temp);
-    memcpy(ourFAT.arr+4096*(i-1),temp,BLOCK_SIZE);
+    memcpy(our_fat.arr+4096*(i-1),temp,BLOCK_SIZE);
   }
-  if(ourFAT.arr[0]!= 0xFFFF)
+  if(our_fat.arr[0]!= 0xFFFF)
     return -1;
   mount_buffer = (void *)malloc(BLOCK_SIZE);
   our_root = (struct rootdirectory *)malloc(sizeof(struct rootdirectory));
@@ -107,7 +107,7 @@ int fs_umount(void)
   void * umount_buffer=malloc(sizeof(BLOCK_SIZE));
   for(i=0;i<super.num_FAT;i++)
   {
-    memcpy(umount_buffer,ourFAT.arr+i*4096,BLOCK_SIZE);
+    memcpy(umount_buffer,our_fat.arr+i*4096,BLOCK_SIZE);
     block_write(1+i,umount_buffer);
   }
   block_write(super.root_index,our_root);
@@ -140,7 +140,7 @@ int fs_info(void)
 
   for(i=0;i < super.num_data;i++)
   {
-    if(ourFAT.arr[i] == 0 )
+    if(our_fat.arr[i] == 0 )
     {
       freefat++;
     }
