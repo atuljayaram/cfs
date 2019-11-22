@@ -184,12 +184,7 @@ int fs_create(const char *filename)
 {
 
   int i = 0;
-  int count = 0;
-  int valid = 1;
-
-
-  /* TODO: Phase 2 */
-
+  int valid;
 
   //checks for validity of filename
   for(i = 0; i < FS_FILENAME_LEN; i++){
@@ -202,35 +197,44 @@ int fs_create(const char *filename)
     return -1;
   }
 
-  //checks if the file named @filename already exists
-  for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-    if(strlen(root[i].filename, filename) != 0){
-      if(strcmp(root[i].filename, filename) == 0){
-        return -1;
-      }
-      else{
-        count = count + 1;
-      }
-    }
+	//check if file named @filename already exists
+	for(i = 0; i < FS_FILE_MAX_COUNT; i++){
+		struct entries node;
+		node = our_root->root[i];
+		if(strcmp(node.filename, filename) == 0){
+			return -1;
+		}
+	}
 
-    //string of filename is too long
-    if((strlen(filename)) >= FS_FILENAME_LEN){
-      return -1;
-    }
+	//check if string @filename is too long
+	if(strnlen(filename, FS_FILENAME_LEN) >= FS_FILENAME_LEN){
+		return -1;
+	}
 
-    //check if root directory already contains FS_FILE_MAX_COUNT file_size
-    if(count == FS_FILE_MAX_COUNT){
-      return -1;
-    }
-  }
+	// check if root directory already contains %FS_FILE_MAX_COUNT files
+	for(i = 0; i < FS_FILE_MAX_COUNT; i++){
+		struct entries node;
+		node = our_root->root[i];
+		if(node.filename[0] != '\0'){
+			int count_num_file = 0;
+			count_num_file++;
+			if(count_num_file >= FS_FILE_MAX_COUNT){
+				return -1;
+			}
+		}
+	}
+
 
   //create new file
   for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-    if(root[i].filename[0] == '\0'){
-      strcpy(root[i].filename, filename);
-      root[i].first_index = 0xFFFF;
-      root[i].file_size = 0;
-      block_write(super.root_index, &root);
+		struct entries node;
+		node = our_root->root[i];
+    if(node.filename[0] == '\0'){
+      strcpy(node.filename, filename);
+      node.first_index = 0xFFFF;
+			our_root->root[i] = node;
+      block_write(super.root_index, our_root->root);
+			break;
     }
   }
   return 0;
@@ -254,7 +258,7 @@ int fs_delete(const char *filename)
 	/* TODO: Phase 2 */
   int i = 0;
   int check_if_file_exists = 1;
-	uint16_t our_FAT_index = root[i].data_index;
+	int valid = 0;
 	uint16_t temp;
 
 
@@ -262,7 +266,7 @@ int fs_delete(const char *filename)
   //checks for validity of filename
   for(i = 0; i < FS_FILENAME_LEN; i++){
     if(filename[i] == '\0'){
-      int valid = 1;
+      valid = 1;
       break;
     }
   }
@@ -271,29 +275,31 @@ int fs_delete(const char *filename)
   }
   //checks if there is no file named @filename to delete
   for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-    if(strcmp(root[i].filename, filename) == 0){
+		struct entries entry;
+		entry = our_root->root[i];
+    if(strcmp(entry.filename, filename) == 0){
       check_if_file_exists = 1;
     }
   }
   if(check_if_file_exists != 1){
-    return -1
+    return -1;
   }
 
-  //check if file @filename is currently open
-  for(i = 0; i < FS_OPEN_MAX_COUNT; i++){
-    if(strcmp(currently_open[i].filename, filename) == 0){
-      if(currently_open[i].fd != -1){
-        return -1;
-      }
-    }
-  }
+  //TODO: check if file @filename is currently open
+	// for(i = 0; i < FS_OPEN_MAX_COUNT; i++){
+	// 	if()
+	// }
 
-	//todo delete fileSize
+
+	//todo delete file
 	for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-		if(root[i].filename[0] != '\0'){
-			if(strcmp(root[i].filename, filename) == 0){
+		struct entries entry;
+		entry = our_root->root[i];
+		if(entry.filename[0] != '\0'){
+			if(strcmp(entry.filename, filename) == 0){
 				 //delete file and claer FAT
-				root[i].filename[0] = '\0';
+				entry.filename[0] = '\0';
+				uint16_t our_FAT_index = entry.first_index;
 				while(our_FAT_index != 0xFFFF){
 					temp = fat_table[our_FAT_index];
 					fat_table[our_FAT_index] = 0;
@@ -328,12 +334,14 @@ int fs_ls(void)
 
 	printf("FS Ls:\n");
 
-	for ( int i = 0; i < FS_FILE_MAX_COUNT; i++) {
-		if (root[i].filename[0] != '\0') {
+	for(int i = 0; i < FS_FILE_MAX_COUNT; i++) {
+		struct entries node;
+		node = our_root->root[i];
+		if (node.filename[0] != '\0') {
 
-			printf("file: %s, ", (char*)root[i].filename);
-			printf("size: %u, ", root[i].file_size);
-			printf("data_blk: %u\n", root[i].first_index);
+			printf("file: %s, ", (char*)node.filename);
+			printf("size: %u, ", node.file_size);
+			printf("data_blk: %u\n", node.first_index);
 		}
 	}
 	return 0;
