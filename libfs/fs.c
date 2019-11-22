@@ -53,8 +53,8 @@ struct fd_table{
 
 uint16_t *fat_table;
 
-struct fd* our_fd_table;
-fd_t currently_open[FS_OPEN_MAX_COUNT];
+struct fd_table* our_fd_table;
+
 
 /* TODO: Phase 1 */
 
@@ -136,9 +136,9 @@ int fs_info(void)
   printf("FAT Block # %i\n",super.num_FAT);
   printf("Root Directory Index: %i\n",super.root_index);
   printf("Data Block Index: %i\n",super.data_index);
-  printf("Data Block # %i\n",super.num_data);
+  printf("Data Block # %i\n",super.num_data_blocks);
 
-  for(i=0;i < super.num_data;i++)
+  for(i=0;i < super.num_data_blocks;i++)
   {
     if(our_fat.arr[i] == 0 )
     {
@@ -146,7 +146,7 @@ int fs_info(void)
     }
   }
 
-  printf("Free FAT Blocks # %d/%d\n",freefat,super.num_data);
+  printf("Free FAT Blocks # %d/%d\n",freefat,super.num_data_blocks);
   for(i=0; i < FS_FILE_MAX_COUNT; i++)
   {
     struct entries node;
