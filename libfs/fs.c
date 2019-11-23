@@ -257,10 +257,10 @@ int fs_delete(const char *filename)
   
   if (our_fd_table != NULL)
   {
-    for(inex=0;index<FS_OPEN_MAX_COUNT;index++) // Check if file is open
+    for(index=0;index<FS_OPEN_MAX_COUNT;index++) // Check if file is open
     {
       struct fd_node node;
-      node = our_fd->descriptors[i];
+      node = our_fd_table->descriptors[index];
       if(strcmp(node.filename,filename)==0)
         found_file = 1;
     }
@@ -282,7 +282,7 @@ int fs_delete(const char *filename)
       for (j = 0; j < num_blocks; j++) 
       {
         our_fat.arr[entry.first_index+j] = 0;
-        if( ourFAT.arr[entry.first_index+j]==0xFFFF)
+        if( our_fat.arr[entry.first_index+j]==0xFFFF)
           break;
       }
       
@@ -339,7 +339,7 @@ int fs_open(const char *filename)
     
   if (our_fd_table == NULL)
   {
-    our_fd_table = (struct fd *)malloc(sizeof(struct fd));
+    our_fd_table = (struct fd_table *)malloc(sizeof(struct fd_table));
     int i;
     for (i=0; i<FS_OPEN_MAX_COUNT; i++)
     {
@@ -349,7 +349,7 @@ int fs_open(const char *filename)
     our_fd_table->fd_count = 0;
   }
   
-  if (FS_OPEN_MAX_COUNT == our_fd->fd_count)
+  if (FS_OPEN_MAX_COUNT == our_fd_table->fd_count)
     return -1;
   
   int descriptor=0, i;
@@ -361,7 +361,7 @@ int fs_open(const char *filename)
     {
       node.filename = filename;
       descriptor = i;
-      node.fd = fd;
+      node.fd = descriptor;
       node.offset=0;
       our_fd->descriptors[i] = node;
       found_empty = 1;
@@ -384,7 +384,7 @@ int fs_close(int fd)
   for (index = 0; index < FS_OPEN_MAX_COUNT; index++)
   {
     struct fd_node node;
-    node = our_fd->descriptors[index];
+    node = our_fd_table->descriptors[index];
     if (node.fd == fd)
     {
       our_fd->descriptors[index].filename = NULL;
@@ -408,7 +408,7 @@ int fs_stat(int fd)
     return -1;
   for(index=0;index<FS_OPEN_MAX_COUNT;index++)
   {
-    node = our_fd->descriptors[index];
+    node = our_fd_table->descriptors[index];
     if(node.fd==fd)
     {
       found_file = 1;
@@ -422,7 +422,7 @@ int fs_stat(int fd)
   for(index = 0;index < FS_FILE_MAX_COUNT;index++)
   {
     struct entries entry;
-    entry = our_root->root[i];
+    entry = our_root->root[index];
     if(strcmp(entry.filename,node.filename) == 0)
     {
       return entry.file_size;
@@ -442,7 +442,7 @@ int fs_lseek(int fd, size_t offset)
   
   for(index=0;index<FS_OPEN_MAX_COUNT;index++)
   {
-    node = our_fd->descriptors[i];
+    node = our_fd->descriptors[index];
     if(node.fd==fd)
     {
       found_file = 1;
