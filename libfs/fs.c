@@ -55,8 +55,61 @@ uint16_t *fat_table;
 
 struct fd_table* our_fd_table;
 
+struct fd_node * get_descriptor_node(int fd)
+{
+  int index;
+  struct fd_node * node;
+  for(index = 0;index < FS_OPEN_MAX_COUNT; i++)
+  {
+    node = &our_fd_table->descriptors[i];
+    if(node->fd == fd)
+      return node;
+  }
+  return NULL;
+}
 
-/* TODO: Phase 1 */
+struct entries * get_entry(const char * filename)
+{
+  int index;
+  for(index = 0;index < FS_FILE_MAX_COUNT; index++)
+  {
+    struct entries * entry;
+    entry = &our_root->root[index];
+    if(strcmp(entry->filename,filename) == 0)
+      return entry;
+  }
+  return NULL;
+}
+
+int get_free_block(void)
+{
+  int index;
+  for (index = 1; index < super.num_data; index++)
+  {
+    if (our_fat.arr[i] == 0)
+    {
+      return index;
+    }
+  }
+  
+  return -1; // If no free blocks
+}
+
+int allocate_free_blocks(int blocks)
+{
+  int index, free_count = 0;
+  for (index = 1; index < super.num_data; index++)
+  {
+    if (our_fat.arr[i] == 0)
+    {
+      free_count += 1;
+      if (free_count == blocks)
+        return 1;
+    }
+  }
+  
+  return 0; // Couldn't allocate enough blocks
+}
 
 int fs_mount(const char *diskname)
 {
@@ -233,8 +286,6 @@ int fs_create(const char *filename)
   }
   return 0;
 }
-
-
 
 /**
  * fs_delete - Delete a file
@@ -533,22 +584,46 @@ int fs_write(int fd, void *buf, size_t count)
  */
 int fs_read(int fd, void *buf, size_t count)
 {
-	/* TODO: Phase 4 */
+  if(fd>31) // Out of bounds
+    return -1;
+  struct fd_node * node = get_descriptor_node(fd);
+  void *bouncebuffer = (void *) malloc(BLOCK_SIZE);
+  if (node == NULL)
+    return -1;
+    
+  size_t prev_off = node->offset; // Current offset
+  node->offset = 0;
+    
+  struct entries * entry = get_entry(node->filename);
+  
+  if (entry == NULL)
+    return -1;
+  
+  if (entry->file_size < count) //If file is too small 
+    return -1;
+  int num_blocks = entry->file_size/4096 +1;
 
 
-	//check if fd is out of bounds
-	if(fd < 0){
-		return -1
-	}
-	if(fd >= FS_OPEN_MAX_COUNT){
-		return -1;
-	}
-
-	//TODO check if file is not currently open
-
-
-
-
-
-
+  size_t curr_offset = count;
+  int index;
+  for (index = 0; index < num_blocks; i++)
+  {
+    block_read(super.data_index+entry->first_index+index,bouncebuffer);
+    
+    if(curr_offset >= BLOCK_SIZE)
+      memcpy(buf+index*4096,bouncebuffer,BLOCK_SIZE);
+    else
+      memcpy(buf+index*4096,bouncebuffer,curr_offset);
+  
+    if (curr_offset >= BLOCK_SIZE)
+      node->offset += BLOCK_SIZE;
+    else
+      node->offset += curr_offset;
+    
+    curr_offset -= BLOCK_SIZE;
+  }
+  
+  node->offset = prev_off;
+    
+  return count;
 }
