@@ -53,7 +53,7 @@ struct fd_table{
 
 uint16_t *fat_table;
 
-struct fd_table* our_fd_table;
+struct fd_table* our_fd_table_table;
 
 
 /* TODO: Phase 1 */
@@ -116,9 +116,9 @@ int fs_umount(void)
 
   if (close == -1)
     return -1;
-  if(our_fd_table!=NULL)
+  if(our_fd_table_table!=NULL)
   {
-    if(our_fd_table->fd_count!=0)
+    if(our_fd_table_table->fd_count!=0)
       return -1;
   }
   return 0;
@@ -255,12 +255,12 @@ int fs_delete(const char *filename)
   int found_file = 0;
   int index;
   
-  if (our_fd_table != NULL)
+  if (our_fd_table_table != NULL)
   {
     for(index=0;index<FS_OPEN_MAX_COUNT;index++) // Check if file is open
     {
       struct fd_node node;
-      node = our_fd_table->descriptors[index];
+      node = our_fd_table_table->descriptors[index];
       if(strcmp(node.filename,filename)==0)
         found_file = 1;
     }
@@ -273,7 +273,7 @@ int fs_delete(const char *filename)
   for (index = 0; index < FS_FILE_MAX_COUNT; index++)
   {
     struct entries entry;
-    entry = our_root->root[i];
+    entry = our_root->root[index];
     if(strcmp(entry.filename,filename) == 0)
     {
       found_node = 1;
@@ -337,40 +337,40 @@ int fs_open(const char *filename)
   if (filename == NULL)
     return -1;
     
-  if (our_fd_table == NULL)
+  if (our_fd_table_table == NULL)
   {
-    our_fd_table = (struct fd_table *)malloc(sizeof(struct fd_table));
+    our_fd_table_table = (struct fd_table *)malloc(sizeof(struct fd_table));
     int i;
     for (i=0; i<FS_OPEN_MAX_COUNT; i++)
     {
       struct fd_node * n = (struct fd_node*)malloc(sizeof(struct fd_node));
-      our_fd_table->descriptors[i] = *n;
+      our_fd_table_table->descriptors[i] = *n;
     }
-    our_fd_table->fd_count = 0;
+    our_fd_table_table->fd_count = 0;
   }
   
-  if (FS_OPEN_MAX_COUNT == our_fd_table->fd_count)
+  if (FS_OPEN_MAX_COUNT == our_fd_table_table->fd_count)
     return -1;
   
   int descriptor=0, i;
   for (i = 0; i < FS_OPEN_MAX_COUNT; i++)
   {
     struct fd_node node;
-    node = our_fd->descriptors[i];
+    node = our_fd_table_table->descriptors[i];
     if (node.filename == NULL)
     {
       node.filename = filename;
       descriptor = i;
       node.fd = descriptor;
       node.offset=0;
-      our_fd->descriptors[i] = node;
+      our_fd_table->descriptors[i] = node;
       found_empty = 1;
     }
       
   }
   if(found_empty == 0)
     return -1;
-  our_fd_table->fd_count +=1; 
+  our_fd_table_table->fd_count +=1; 
   return descriptor;  
 }
 
@@ -384,17 +384,17 @@ int fs_close(int fd)
   for (index = 0; index < FS_OPEN_MAX_COUNT; index++)
   {
     struct fd_node node;
-    node = our_fd_table->descriptors[index];
+    node = our_fd_table_table->descriptors[index];
     if (node.fd == fd)
     {
-      our_fd->descriptors[index].filename = NULL;
+      our_fd_table->descriptors[index].filename = NULL;
       found_file = 1;
     } 
   }
   if (found_file == 0) //not found
     return -1;
     
-  our_fd->fd_count -= 1;
+  our_fd_table->fd_count -= 1;
     
   return 0;
 }
@@ -408,7 +408,7 @@ int fs_stat(int fd)
     return -1;
   for(index=0;index<FS_OPEN_MAX_COUNT;index++)
   {
-    node = our_fd_table->descriptors[index];
+    node = our_fd_table_table->descriptors[index];
     if(node.fd==fd)
     {
       found_file = 1;
@@ -442,7 +442,7 @@ int fs_lseek(int fd, size_t offset)
   
   for(index=0;index<FS_OPEN_MAX_COUNT;index++)
   {
-    node = our_fd->descriptors[index];
+    node = our_fd_table->descriptors[index];
     if(node.fd==fd)
     {
       found_file = 1;
@@ -456,7 +456,7 @@ int fs_lseek(int fd, size_t offset)
   for (index=0; index < FS_FILE_MAX_COUNT; index++)
   {
       struct entries entry;
-      entry = our_root->root[i];
+      entry = our_root->root[index];
       if (strcmp(node.filename, entry.filename) == 0)
       {
         if (offset > entry.file_size)
