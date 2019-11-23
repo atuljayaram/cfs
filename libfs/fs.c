@@ -160,12 +160,6 @@ int fs_info(void)
   return 0;
 }
 
-
-
-
-
-
-
 //done?
 /**
  * fs_create - Create a new file
@@ -312,12 +306,6 @@ int fs_delete(const char *filename)
 	return 0;
 }
 
-
-
-
-
-
-
 /**
  * fs_ls - List files on file system
  *
@@ -347,40 +335,142 @@ int fs_ls(void)
 	return 0;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 int fs_open(const char *filename)
 {
-	/* TODO: Phase 3 */
+	int found_empty=0;
+  if (filename == NULL)
+    return -1;
+    
+  if (our_fd_table == NULL)
+  {
+    our_fd_table = (struct fd *)malloc(sizeof(struct fd));
+    int i;
+    for (i=0; i<FS_OPEN_MAX_COUNT; i++)
+    {
+      struct fd_node * n = (struct fd_node*)malloc(sizeof(struct fd_node));
+      our_fd_table->descriptors[i] = *n;
+    }
+    our_fd_table->fd_count = 0;
+  }
+  
+  if (FS_OPEN_MAX_COUNT == our_fd->fd_count)
+    return -1;
+  
+  int descriptor=0, i;
+  for (i = 0; i < FS_OPEN_MAX_COUNT; i++)
+  {
+    struct fd_node node;
+    node = our_fd->descriptors[i];
+    if (node.filename == NULL)
+    {
+      node.filename = filename;
+      descriptor = i;
+      node.fd = fd;
+      node.offset=0;
+      our_fd->descriptors[i] = node;
+      found_empty = 1;
+    }
+      
+  }
+  if(found_empty == 0)
+    return -1;
+  our_fd_table->fd_count +=1; 
+  return descriptor;  
 }
 
 int fs_close(int fd)
 {
-	/* TODO: Phase 3 */
+	int index; 
+  int found_file = 0;
+  if(fd >= 32 || fd < 0)//check if out of bounds
+    return -1;
+  
+  for (index = 0; index < FS_OPEN_MAX_COUNT; index++)
+  {
+    struct fd_node node;
+    node = our_fd->descriptors[index];
+    if (node.fd == fd)
+    {
+      our_fd->descriptors[index].filename = NULL;
+      found_file = 1;
+    } 
+  }
+  if (found_file == 0) //not found
+    return -1;
+    
+  our_fd->fd_count -= 1;
+    
+  return 0;
 }
 
 int fs_stat(int fd)
 {
-	/* TODO: Phase 3 */
+	int found_file=0;
+  int index;
+  struct fd_node node;
+  if(fd >= 32 || fd < 0)
+    return -1;
+  for(index=0;index<FS_OPEN_MAX_COUNT;index++)
+  {
+    node = our_fd->descriptors[index];
+    if(node.fd==fd)
+    {
+      found_file = 1;
+      break;
+    }
+  }
+  
+  if (found_file == 0)
+    return -1;
+  
+  for(index = 0;index < FS_FILE_MAX_COUNT;index++)
+  {
+    struct entries entry;
+    entry = our_root->root[i];
+    if(strcmp(entry.filename,node.filename) == 0)
+    {
+      return entry.file_size;
+    }
+  }
+  return 0;
 }
 
 int fs_lseek(int fd, size_t offset)
 {
-	/* TODO: Phase 3 */
+	int found_file = 0;
+  int index;
+  if(fd >= 32 || fd < 0)
+    return -1;
+    
+  struct fd_node node;
+  
+  for(index=0;index<FS_OPEN_MAX_COUNT;index++)
+  {
+    node = our_fd->descriptors[i];
+    if(node.fd==fd)
+    {
+      found_file = 1;
+      break;
+    }
+  }
+  
+  if (found_file == 0)
+    return -1;
+    
+  for (index=0; index < FS_FILE_MAX_COUNT; index++)
+  {
+      struct entries entry;
+      entry = our_root->root[i];
+      if (strcmp(node.filename, entry.filename) == 0)
+      {
+        if (offset > entry.file_size)
+          return -1;
+      } 
+  }
+  
+  node.offset = offset;
+  
+  return 0;
 }
 
 int fs_write(int fd, void *buf, size_t count)
