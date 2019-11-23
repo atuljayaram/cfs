@@ -249,61 +249,57 @@ int fs_create(const char *filename)
 int fs_delete(const char *filename)
 {
 
-	/* TODO: Phase 2 */
-  int i = 0;
-  int check_if_file_exists = 1;
-	int valid = 0;
-	uint16_t temp;
+	if (filename == NULL)
+    return -1;
+    
+  int found_file = 0;
+  int index;
+  
+  if (our_fd_table != NULL)
+  {
+    for(inex=0;index<FS_OPEN_MAX_COUNT;index++) // Check if file is open
+    {
+      struct fd_node node;
+      node = our_fd->descriptors[i];
+      if(strcmp(node.filename,filename)==0)
+        found_file = 1;
+    }
+    
+    if (found_file == 0)
+      return -1;
+  }
+  
+  int found_node = 0;
+  for (index = 0; index < FS_FILE_MAX_COUNT; index++)
+  {
+    struct entries entry;
+    entry = our_root->root[i];
+    if(strcmp(entry.filename,filename) == 0)
+    {
+      found_node = 1;
+      int j = 0;
+      int num_blocks = entry.file_size/4096 +1;
+      for (j = 0; j < num_blocks; j++) 
+      {
+        our_fat.arr[entry.first_index+j] = 0;
+        if( ourFAT.arr[entry.first_index+j]==0xFFFF)
+          break;
+      }
+      
 
-
-
-  //checks for validity of filename
-  for(i = 0; i < FS_FILENAME_LEN; i++){
-    if(filename[i] == '\0'){
-      valid = 1;
+      strcpy(entry.filename,"\0");
+      entry.file_size=0;
+      entry.first_index=0;
+      our_root->root[i] = entry;
+      
+      block_write(super.root_index,our_root->root);
       break;
     }
   }
-  if(valid != 1){
-    return -1;
-  }
-  //checks if there is no file named @filename to delete
-  for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-		struct entries entry;
-		entry = our_root->root[i];
-    if(strcmp(entry.filename, filename) == 0){
-      check_if_file_exists = 1;
-    }
-  }
-  if(check_if_file_exists != 1){
-    return -1;
-  }
-
-  //TODO: check if file @filename is currently open
-	// for(i = 0; i < FS_OPEN_MAX_COUNT; i++){
-	// 	if()
-	// }
-
-
-	//todo delete file
-	for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-		struct entries entry;
-		entry = our_root->root[i];
-		if(entry.filename[0] != '\0'){
-			if(strcmp(entry.filename, filename) == 0){
-				 //delete file and claer FAT
-				entry.filename[0] = '\0';
-				uint16_t our_FAT_index = entry.first_index;
-				while(our_FAT_index != 0xFFFF){
-					temp = fat_table[our_FAT_index];
-					fat_table[our_FAT_index] = 0;
-					our_FAT_index = temp;
-				}
-				break;
-			}
-		}
-	}
-	return 0;
+    if(found_node == 0) // Didn't exist
+      return -1;
+      
+  return 0;
 }
 
 /**
