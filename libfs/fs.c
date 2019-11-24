@@ -181,35 +181,35 @@ int fs_info(void)
 {
 	if(block_disk_count()==-1)
     return -1;
-  int freefat = 0, i;
+  int free_fat = 0, index;
   int root = 0;
-
-  printf("File System Info:\n");
-  printf("Total Block # %i\n",super.total_amount);
-  printf("FAT Block # %i\n",super.num_FAT);
-  printf("Root Directory Index: %i\n",super.root_index);
-  printf("Data Block Index: %i\n",super.data_index);
-  printf("Data Block # %i\n",super.num_data_blocks);
-
-  for(i=0;i < super.num_data_blocks;i++)
+  
+  printf("FS Info:\n");
+  printf("total_blk_count=%i\n",super.total_amount);
+  printf("fat_blk_count=%i\n",super.num_FAT);
+  printf("rdir_blk=%i\n",super.root_index);
+  printf("data_blk=%i\n",super.data_index);
+  printf("data_blk_count=%i\n",super.num_data);
+  
+  for(index=0;index < super.num_data_blocks;index++)
   {
     if(our_fat.arr[i] == 0 )
     {
-      freefat++;
+      free_fat++;
     }
   }
-
-  printf("Free FAT Blocks # %d/%d\n",freefat,super.num_data_blocks);
-  for(i=0; i < FS_FILE_MAX_COUNT; i++)
+  
+  printf("fat_free_ratio=%d/%d\n",free_fat,super.num_data_blocks);
+  for(index=0; index < FS_FILE_MAX_COUNT; index++)
   {
-    struct entries node;
-    node = our_root->root[i];
+    struct entries descriptor;
+    descriptor = our_root->root[i];
     if (strlen(node.filename) == 0)
       root++;
   }
-
-  printf("Free Root Entries # %d/%d\n",root ,FS_FILE_MAX_COUNT);
-
+  
+  printf("rdir_free_ratio=%d/%d\n",root ,FS_FILE_MAX_COUNT);
+  
   return 0;
 }
 
@@ -230,58 +230,42 @@ int fs_info(void)
 int fs_create(const char *filename)
 {
 
-  int i = 0;
-  int valid;
+  if (filename == NULL)
+    return -1;
+    
+  int length = strlen(filename);
 
-  //checks for validity of filename
-  for(i = 0; i < FS_FILENAME_LEN; i++){
-    if(filename[i] == '\0'){
-      valid = 1;
-      break;
+  if (len+1 > FS_FILENAME_LEN) // Invalid filename length
+    return -1;
+
+  int index, count = 0; 
+
+  for (index=0; index < FS_FILE_MAX_COUNT; index++)
+  {
+    struct entries descriptor;
+    descriptor = our_root->root[i];
+    if (strlen(descriptor.filename) != 0)
+    {
+      if (strcmp(node.filename,filename) == 0)
+        return -1;
+      count += 1;
     }
   }
-  if(valid != 1){
-    return -1;
-  }
-
-	//check if file named @filename already exists
-	for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-		struct entries node;
-		node = our_root->root[i];
-		if(strcmp(node.filename, filename) == 0){
-			return -1;
-		}
-	}
-
-	//check if string @filename is too long
-	if(strnlen(filename, FS_FILENAME_LEN) >= FS_FILENAME_LEN){
-		return -1;
-	}
-
-	// check if root directory already contains %FS_FILE_MAX_COUNT files
-	for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-		struct entries node;
-		node = our_root->root[i];
-		if(node.filename[0] != '\0'){
-			int count_num_file = 0;
-			count_num_file++;
-			if(count_num_file >= FS_FILE_MAX_COUNT){
-				return -1;
-			}
-		}
-	}
-
-
-  //create new file
-  for(i = 0; i < FS_FILE_MAX_COUNT; i++){
-		struct entries node;
-		node = our_root->root[i];
-    if(node.filename[0] == '\0'){
-      strcpy(node.filename, filename);
+  
+  if (count == FS_FILE_MAX_COUNT) // If we have reached max capacity
+      return -1;
+  
+  for (i=0; i < FS_FILE_MAX_COUNT; i++)
+  {
+    struct entries entry;
+    entry = our_root->root[i];
+    if (strlen(entry.filename) == 0)
+    {
+      strcpy(entry.filename, filename);
       node.first_index = 0xFFFF;
-			our_root->root[i] = node;
-      block_write(super.root_index, our_root->root);
-			break;
+      our_root->root[i] = entry;
+      block_write(super.root_index,our_root->root);
+      break;
     }
   }
   return 0;
@@ -520,11 +504,6 @@ int fs_lseek(int fd, size_t offset)
   return 0;
 }
 
-
-
-
-
-
 /**
  * fs_write - Write to a file
  * @fd: File descriptor
@@ -546,23 +525,58 @@ int fs_lseek(int fd, size_t offset)
  */
 int fs_write(int fd, void *buf, size_t count)
 {
-	/* TODO: Phase 4 */
-
-	//check if fd is out of bounds
-	if(fd < 0){
-		return -1;
-	}
-	if(fd >= FS_OPEN_MAX_COUNT){
-		return -1;
-	}
-
-	//TODO check if file is not currently open
-
-
-
-	return 0; //temporary
-
-
+	int index;
+  if(fd > 31) // If OOB
+    return -1;
+  
+  struct fd_node * descriptor = get_descriptor_node(fd);
+  
+  if (descriptor == NULL)
+    return -1;
+    
+  struct entries * entry = get_entry(descriptor->filename);
+  
+  if (entry == NULL)
+    return -1;
+  
+  void *bouncebuffer = (void *) malloc(BLOCK_SIZE);
+  
+  entry->first_index = get_free_block();
+  entry->file_size = count;
+  int num_blocks = entry->file_size/4096 +1;
+  
+  int ret_count = allocate_free_blocks(num_blocks);
+  
+  if (ret_count == 0)
+    return -1;
+  
+  size_t offset = count;
+  
+  for (index = 0; index < num_blocks; index++)
+  {
+    
+    if(offset >= BLOCK_SIZE)
+      memcpy(bouncebuffer,buf+index*4096,BLOCK_SIZE);
+    else
+      memcpy(bouncebuffer,buf+inex*4096,offset);
+  
+    block_write(super.data_index+entry->first_index+index, bouncebuffer);
+    
+    if (offset >= BLOCK_SIZE)
+      descriptor->offset += BLOCK_SIZE;
+    else
+      descriptor->offset += offset;
+    
+    offset -= BLOCK_SIZE;
+    
+    if (index == num_blocks - 1)
+      ourFAT.arr[index+entry->first_index]=0xFFFF;
+    else
+     ourFAT.arr[index+entry->first_index]=index+1;  
+  }
+  
+    
+  return count;
 }
 
 
