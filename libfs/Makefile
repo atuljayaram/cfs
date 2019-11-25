@@ -1,31 +1,28 @@
-# Target library
-lib := libfs.a
+targets := libfs.a
+objs 	:= disk.o fs.o
+header	:= disk.h fs.h
 
-all: $(lib)
-
-objs    := fs.o disk.o
-CC      := gcc
-CFLAGS  := -Wall -Werror
-CFLAGS  += -g
+AR	:= ar
+ARFLAGS := -rcs
+CC 	:= gcc
+CFLAGS	:= -Wall -Werror
+CFLAGS	+= -g
 
 ifneq ($(V),1)
 Q = @
 endif
 
-all:  $(lib)
 
-deps :=  $(patsubst %.o,%.d,$(objs))
--include $(deps)
-DEPFLAGS = -MMD -MF $(@:.o=.d)
+all: $(targets)
 
-libfs.a: $(objs)
+%.a: $(objs)
+	@echo "AR  $@"
+	$(Q)$(AR) -rcs $@ $^
+
+%.o: %.c $(header)
 	@echo "CC $@"
-	ar rcs $(lib) $(objs)
-
-%.o: %.c
-	@echo "CC $@"
-	$(Q)$(CC) $(CFLAGS) -c -o $@ $< $(DEPFLAGS)
+	$(Q)$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	@echo "clean"
-	$(Q)rm -f $(targets) $(objs) $(deps)
+	@echo "CLEAN"
+	$(Q)rm -f $(targets) $(objs)
