@@ -204,7 +204,7 @@ int fs_info(void)
   {
     struct entries descriptor;
     descriptor = our_root->root[index];
-    if (strlen(node.filename) == 0)
+    if (strlen(descriptor.filename) == 0)
       root++;
   }
 
@@ -246,7 +246,7 @@ int fs_create(const char *filename)
     descriptor = our_root->root[index];
     if (strlen(descriptor.filename) != 0)
     {
-      if (strcmp(node.filename,filename) == 0)
+      if (strcmp(descriptor.filename,filename) == 0)
         return -1;
       count += 1;
     }
@@ -262,7 +262,7 @@ int fs_create(const char *filename)
     if (strlen(entry.filename) == 0)
     {
       strcpy(entry.filename, filename);
-      node.first_index = 0xFFFF;
+      entry.first_index = 0xFFFF;
       our_root->root[index] = entry;
       block_write(super.root_index,our_root->root);
       break;
@@ -570,9 +570,9 @@ int fs_write(int fd, void *buf, size_t count)
     offset -= BLOCK_SIZE;
 
     if (index == num_blocks - 1)
-      ourFAT.arr[index+entry->first_index]=0xFFFF;
+      our_fat.arr[index+entry->first_index]=0xFFFF;
     else
-     ourFAT.arr[index+entry->first_index]=index+1;
+     our_fat.arr[index+entry->first_index]=index+1;
   }
 
 
