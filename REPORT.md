@@ -65,3 +65,6 @@ In fs_ls, we just print the listing of all the files in the file system. Simple!
 In fs_write, we check if fd is out of bounds by checking if fd > 0 or if fd >= FS_OPEN_MAX_COUNT and return -1 if so. We also check if the file is not currently open and return -1 if so.
 
 In fs_read, we check if fd is out of bounds by checking if fd > 0 or if fd >= FS_OPEN_MAX_COUNT and return -1 if so. We also check if the file is not currently open and return -1 if so.
+
+## Testing
+We were able to pass all the test cases that the professor provides. Since the tests weren't as comprehensive though, we decided to write our own test cases! student_test1 tests a lot of things, including creating, adding, deleting files. Also, it gets the ls and cat. student_test2 tests the exact same thing, but on a larger scale. student_test3 tests the size of the filename and if the the size is illegal. student_test4 tests the removal of a file that doesn't actually exist! 
